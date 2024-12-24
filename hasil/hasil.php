@@ -1,12 +1,14 @@
 <?php
 include '../koneksi.php';
 
-$query = "SELECT * FROM pulsa WHERE status = 'Lunas'";
-$result_pulsa = $conn->query($query);
+// Query untuk data pulsa dan dokumen
+$query_pulsa = "SELECT * FROM pulsa WHERE status = 'Lunas'";
+$result_pulsa = $conn->query($query_pulsa);
 
 $query_dokumen = "SELECT * FROM dokumen WHERE status = 'Lunas'";
 $result_dokumen = $conn->query($query_dokumen);
 
+// Perhitungan total
 $total_beli_pulsa = 0;
 $total_bayar_pulsa = 0;
 while ($row = $result_pulsa->fetch_assoc()) {
@@ -34,18 +36,61 @@ $selisih_bayar_pulsa = $total_bayar_pulsa - $total_beli_pulsa;
 
 <body>
     <div class="container mt-5">
-        <h2>Hasil Perhitungan Pulsa dan Dokumen</h2>
+        <h2 class="text-center mb-4">Hasil Pulsa dan Dokumen</h2>
 
-        <h4>Hasil Pulsa</h4>
-        <p>Total Beli Pulsa: Rp<?= number_format($total_beli_pulsa, 2) ?></p>
-        <p>Total Bayar Pulsa: Rp<?= number_format($total_bayar_pulsa, 2) ?></p>
-        <p>Selisih Bayar Pulsa: Rp<?= number_format($selisih_bayar_pulsa, 2) ?></p>
+        <!-- Tabel Pulsa -->
+        <div class="table-responsive">
+            <h4>Hasil Pulsa</h4>
+            <table class="table table-bordered table-striped">
+                <thead class="table-primary">
+                    <tr>
+                        <th>Keterangan</th>
+                        <th>Jumlah (Rp)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Total Beli Pulsa</td>
+                        <td><?= number_format($total_beli_pulsa, 2) ?></td>
+                    </tr>
+                    <tr>
+                        <td>Total Bayar Pulsa</td>
+                        <td><?= number_format($total_bayar_pulsa, 2) ?></td>
+                    </tr>
+                    <tr>
+                        <td>Total Hasil Pulsa</td>
+                        <td><?= number_format($selisih_bayar_pulsa, 2) ?></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
-        <h4>Hasil Dokumen</h4>
-        <p>Total Bayar Dokumen: Rp<?= number_format($total_bayar_dokumen, 2) ?></p>
+        <!-- Tabel Dokumen -->
+        <div class="table-responsive mt-4">
+            <h4>Hasil Dokumen</h4>
+            <table class="table table-bordered table-striped">
+                <thead class="table-primary">
+                    <tr>
+                        <th>Keterangan</th>
+                        <th>Jumlah (Rp)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Total Hasil Dokumen</td>
+                        <td><?= number_format($total_bayar_dokumen, 2) ?></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
-        <a href="../index.php" class="btn btn-secondary mt-3">Kembali</a>
+        <!-- Tombol Kembali -->
+        <div class="text-center mt-4">
+            <a href="../index.php" class="btn btn-secondary btn-lg w-100">Kembali</a>
+        </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
 </html>

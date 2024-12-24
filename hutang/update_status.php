@@ -1,5 +1,5 @@
 <?php
-include 'koneksi.php';
+include '../koneksi.php';
 
 $id = $_POST['id'];
 $type = $_POST['type'];
@@ -11,7 +11,7 @@ if ($type === 'pulsa') {
 }
 
 if ($conn->query($query)) {
-    header('Location: hutang.php');
+    header('Location: ../hutang/hutang.php');
 } else {
     echo "Error: " . $conn->error;
 }

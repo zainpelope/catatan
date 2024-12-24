@@ -11,44 +11,78 @@ $result = $conn->query($query);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dokumen</title>
+    <title>Data Dokumen</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        h2 {
+            color: #343a40;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+    </style>
 </head>
 
 <body>
     <div class="container mt-5">
         <h2>Data Dokumen</h2>
-        <a href="tambah_dokumen.php" class="btn btn-primary mb-3">Add Dokumen</a>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Nama</th>
-                    <th>Tanggal</th>
-                    <th>Bayar</th>
-                    <th>Keterangan</th>
-                    <th>Status</th>
-                    <th>Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php while ($row = $result->fetch_assoc()): ?>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <a href="tambah_dokumen.php" class="btn btn-primary">Add Dokumen</a>
+            <a href="../index.php" class="btn btn-secondary">Kembali</a>
+        </div>
+        <div class="table-container">
+            <table class="table table-striped table-bordered">
+                <thead class="table-dark">
                     <tr>
-                        <td><?= $row['nama'] ?></td>
-                        <td><?= $row['tanggal'] ?></td>
-                        <td><?= number_format($row['bayar'], 2) ?></td>
-                        <td><?= $row['keterangan'] ?></td>
-                        <td><?= $row['status'] ?></td>
-                        <td>
-                            <a href="edit_dokumen.php?id=<?= $row['id'] ?>" class="btn btn-warning btn-sm">Edit</a>
-                            <a href="delete_dokumen.php?id=<?= $row['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this item?')">Delete</a>
-                        </td>
+                        <th>Nama</th>
+                        <th>Tanggal</th>
+                        <th>Bayar</th>
+                        <th>Keterangan</th>
+                        <th>Status</th>
+                        <th>Aksi</th>
                     </tr>
-                <?php endwhile; ?>
-            </tbody>
-        </table>
-
-        <a href="../index.php" class="btn btn-secondary mt-3">Kembali</a>
+                </thead>
+                <tbody>
+                    <?php while ($row = $result->fetch_assoc()): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($row['nama']) ?></td>
+                            <td><?= htmlspecialchars($row['tanggal']) ?></td>
+                            <td><?= 'Rp ' . number_format($row['bayar'], 2, ',', '.') ?></td>
+                            <td><?= htmlspecialchars($row['keterangan']) ?></td>
+                            <td>
+                                <span class="badge bg-<?= $row['status'] == 'Lunas' ? 'success' : 'danger' ?>">
+                                    <?= htmlspecialchars($row['status']) ?>
+                                </span>
+                            </td>
+                            <td>
+                                <a href="edit_dokumen.php?id=<?= $row['id'] ?>" class="btn btn-warning btn-sm">Edit</a>
+                                <a href="delete_dokumen.php?id=<?= $row['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this item?')">Delete</a>
+                            </td>
+                        </tr>
+                    <?php endwhile; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
 </html>
