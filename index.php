@@ -62,6 +62,36 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Card: Catatan -->
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="card border-info text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Catatan</h5>
+                        <a href="catatan/catatan.php" class="btn btn-info">Lihat Catatan</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card: Kegiatanku -->
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="card border-danger text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Kegiatan</h5>
+                        <a href="kegiatan/kegiatan.php" class="btn btn-danger">Lihat Kegiatan</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card: Targetku -->
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="card border-warning text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Target</h5>
+                        <a href="target/target.php" class="btn btn-warning">Lihat Target</a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

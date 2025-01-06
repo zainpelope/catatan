@@ -3,6 +3,9 @@ include '../koneksi.php';
 
 $query = "SELECT * FROM dokumen";
 $result = $conn->query($query);
+
+// Variabel untuk menghitung total bayar
+$total_bayar = 0;
 ?>
 
 <!DOCTYPE html>
@@ -43,10 +46,13 @@ $result = $conn->query($query);
 <body>
     <div class="container mt-5">
         <h2>Data Dokumen</h2>
-        <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-2 mb-3">
             <a href="tambah_dokumen.php" class="btn btn-primary">Add Dokumen</a>
-            <a href="../index.php" class="btn btn-secondary">Kembali</a>
+            <a href="../perlengkapan/perlengkapan.php" class="btn btn-success">Biaya Perlengkapan Dokumen</a>
+            <a href="../index.php" class="btn btn-secondary ms-auto">Kembali</a>
         </div>
+
+
         <div class="table-container">
             <table class="table table-striped table-bordered">
                 <thead class="table-dark">
@@ -60,7 +66,10 @@ $result = $conn->query($query);
                     </tr>
                 </thead>
                 <tbody>
-                    <?php while ($row = $result->fetch_assoc()): ?>
+                    <?php while ($row = $result->fetch_assoc()):
+                        // Menambahkan total bayar
+                        $total_bayar += $row['bayar'];
+                    ?>
                         <tr>
                             <td><?= htmlspecialchars($row['nama']) ?></td>
                             <td><?= htmlspecialchars($row['tanggal']) ?></td>
@@ -78,6 +87,13 @@ $result = $conn->query($query);
                         </tr>
                     <?php endwhile; ?>
                 </tbody>
+                <tfoot class="table-dark">
+                    <tr>
+                        <th colspan="2">Total</th>
+                        <th><?= 'Rp ' . number_format($total_bayar, 2, ',', '.') ?></th>
+                        <th colspan="3"></th>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     </div>

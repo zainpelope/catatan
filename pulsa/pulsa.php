@@ -13,6 +13,10 @@ function formatTanggal($tanggal)
 {
     return date("d-m-Y", strtotime($tanggal));
 }
+
+// Variabel untuk menghitung total
+$total_beli = 0;
+$total_bayar = 0;
 ?>
 
 <!DOCTYPE html>
@@ -85,7 +89,11 @@ function formatTanggal($tanggal)
                     <tbody>
                         <?php
                         $no = 1; // Inisialisasi nomor urut
-                        while ($row = $result->fetch_assoc()): ?>
+                        while ($row = $result->fetch_assoc()):
+                            // Menambahkan total beli dan bayar
+                            $total_beli += $row['beli'];
+                            $total_bayar += $row['bayar'];
+                        ?>
                             <tr>
                                 <td><?= $no++ ?></td> <!-- Menampilkan nomor urut -->
                                 <td><?= htmlspecialchars($row['nama']) ?></td>
@@ -104,6 +112,14 @@ function formatTanggal($tanggal)
                             </tr>
                         <?php endwhile; ?>
                     </tbody>
+                    <tfoot class="table-dark">
+                        <tr>
+                            <th colspan="2">Total</th>
+                            <th><?= formatRupiah($total_beli) ?></th>
+                            <th><?= formatRupiah($total_bayar) ?></th>
+                            <th colspan="3"></th>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         </div>

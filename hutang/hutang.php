@@ -9,6 +9,13 @@ $resultPulsa = $conn->query($queryPulsa);
 $queryDokumen = "SELECT * FROM dokumen WHERE status = 'Hutang' ORDER BY tanggal";
 $resultDokumen = $conn->query($queryDokumen);
 
+// Variabel untuk menghitung total Beli dan Bayar pada Pulsa
+$totalBeliPulsa = 0;
+$totalBayarPulsa = 0;
+
+// Variabel untuk menghitung total Bayar pada Dokumen
+$totalBayarDokumen = 0;
+
 // Fungsi untuk format tanggal
 function formatTanggal($tanggal)
 {
@@ -46,7 +53,10 @@ function formatTanggal($tanggal)
                 </thead>
                 <tbody>
                     <?php $no = 1;
-                    while ($row = $resultPulsa->fetch_assoc()) { ?>
+                    while ($row = $resultPulsa->fetch_assoc()) {
+                        $totalBeliPulsa += $row['beli'];
+                        $totalBayarPulsa += $row['bayar'];
+                    ?>
                         <tr>
                             <td><?= $no++ ?></td>
                             <td><?= htmlspecialchars($row['nama']) ?></td>
@@ -63,6 +73,14 @@ function formatTanggal($tanggal)
                         </tr>
                     <?php } ?>
                 </tbody>
+                <tfoot class="table-primary">
+                    <tr>
+                        <th colspan="2">Total</th>
+                        <th>Rp<?= number_format($totalBeliPulsa, 2) ?></th>
+                        <th>Rp<?= number_format($totalBayarPulsa, 2) ?></th>
+                        <th colspan="2"></th>
+                    </tr>
+                </tfoot>
             </table>
         </div>
 
@@ -82,7 +100,9 @@ function formatTanggal($tanggal)
                 </thead>
                 <tbody>
                     <?php $no = 1;
-                    while ($row = $resultDokumen->fetch_assoc()) { ?>
+                    while ($row = $resultDokumen->fetch_assoc()) {
+                        $totalBayarDokumen += $row['bayar'];
+                    ?>
                         <tr>
                             <td><?= $no++ ?></td>
                             <td><?= htmlspecialchars($row['nama']) ?></td>
@@ -99,6 +119,13 @@ function formatTanggal($tanggal)
                         </tr>
                     <?php } ?>
                 </tbody>
+                <tfoot class="table-primary">
+                    <tr>
+                        <th colspan="3">Total</th>
+                        <th>Rp<?= number_format($totalBayarDokumen, 2) ?></th>
+                        <th colspan="2"></th>
+                    </tr>
+                </tfoot>
             </table>
         </div>
 

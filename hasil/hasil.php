@@ -53,7 +53,7 @@ while ($row = $result_dokumen->fetch_assoc()) {
 
         <!-- Filter untuk Pulsa -->
         <div class="mb-5">
-            <h4>Filter Pulsa</h4>
+            <h4>Pulsa</h4>
             <form action="" method="get" class="d-flex align-items-center gap-3">
                 <select name="bulan_pulsa" class="form-select w-auto">
                     <option value="all" <?= ($bulan_pulsa == 'all') ? 'selected' : '' ?>>Semua Bulan</option>
@@ -95,7 +95,7 @@ while ($row = $result_dokumen->fetch_assoc()) {
             </form>
 
             <div class="table-responsive mt-4">
-                <h4 class="text-center">Hasil Pulsa</h4>
+
                 <table class="table table-bordered table-striped">
                     <thead class="table-primary">
                         <tr>
@@ -123,7 +123,7 @@ while ($row = $result_dokumen->fetch_assoc()) {
 
         <!-- Filter untuk Dokumen -->
         <div>
-            <h4>Filter Dokumen</h4>
+            <h4>Dokumen</h4>
             <form action="" method="get" class="d-flex align-items-center gap-3">
                 <select name="bulan_dokumen" class="form-select w-auto">
                     <option value="all" <?= ($bulan_dokumen == 'all') ? 'selected' : '' ?>>Semua Bulan</option>
@@ -149,7 +149,7 @@ while ($row = $result_dokumen->fetch_assoc()) {
             </form>
 
             <div class="table-responsive mt-4">
-                <h4 class="text-center">Hasil Dokumen</h4>
+
                 <table class="table table-bordered table-striped">
                     <thead class="table-primary">
                         <tr>
