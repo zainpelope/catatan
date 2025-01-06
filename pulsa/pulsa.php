@@ -27,100 +27,68 @@ $total_bayar = 0;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data Pulsa</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            background-color: #f8f9fa;
-        }
-
-        .table-container {
-            background: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-        }
-
-        h2 {
-            font-weight: bold;
-            color: #343a40;
-        }
-
-        .btn-primary {
-            background-color: #007bff;
-            border: none;
-        }
-
-        .btn-primary:hover {
-            background-color: #0056b3;
-        }
-
-        .btn-warning,
-        .btn-danger {
-            transition: transform 0.2s ease-in-out;
-        }
-
-        .btn-warning:hover,
-        .btn-danger:hover {
-            transform: scale(1.1);
-        }
-    </style>
 </head>
 
 <body>
     <div class="container mt-5">
-        <div class="table-container">
-            <h2 class="text-center">Data Pulsa</h2>
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <a href="tambah_pulsa.php" class="btn btn-primary">Add Pulsa</a>
-                <a href="../index.php" class="btn btn-secondary">Kembali</a>
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white text-center">
+                <h3>Data Pulsa</h3>
             </div>
-            <div class="table-responsive">
-                <table class="table table-striped table-bordered">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>No</th>
-                            <th>Nama</th>
-                            <th>Beli</th>
-                            <th>Bayar</th>
-                            <th>Tanggal</th>
-                            <th>Status</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php
-                        $no = 1; // Inisialisasi nomor urut
-                        while ($row = $result->fetch_assoc()):
-                            // Menambahkan total beli dan bayar
-                            $total_beli += $row['beli'];
-                            $total_bayar += $row['bayar'];
-                        ?>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-4">
+                    <a href="tambah_pulsa.php" class="btn btn-success">Tambah Pulsa</a>
+                    <a href="../index.php" class="btn btn-secondary">Kembali</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped table-hover">
+                        <thead class="table-dark">
                             <tr>
-                                <td><?= $no++ ?></td> <!-- Menampilkan nomor urut -->
-                                <td><?= htmlspecialchars($row['nama']) ?></td>
-                                <td><?= formatRupiah($row['beli']) ?></td> <!-- Format Rupiah -->
-                                <td><?= formatRupiah($row['bayar']) ?></td> <!-- Format Rupiah -->
-                                <td><?= formatTanggal($row['tanggal']) ?></td> <!-- Format Tanggal -->
-                                <td>
-                                    <span class="badge bg-<?= $row['status'] == 'Lunas' ? 'success' : 'danger' ?>">
-                                        <?= htmlspecialchars($row['status']) ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <a href="edit_pulsa.php?id=<?= $row['id'] ?>" class="btn btn-warning btn-sm">Edit</a>
-                                    <a href="delete_pulsa.php?id=<?= $row['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this item?')">Delete</a>
-                                </td>
+                                <th style="width: 5%;">No</th>
+                                <th>Nama</th>
+                                <th>Beli</th>
+                                <th>Bayar</th>
+                                <th>Tanggal</th>
+                                <th>Status</th>
+                                <th style="width: 15%;">Aksi</th>
                             </tr>
-                        <?php endwhile; ?>
-                    </tbody>
-                    <tfoot class="table-dark">
-                        <tr>
-                            <th colspan="2">Total</th>
-                            <th><?= formatRupiah($total_beli) ?></th>
-                            <th><?= formatRupiah($total_bayar) ?></th>
-                            <th colspan="3"></th>
-                        </tr>
-                    </tfoot>
-                </table>
+                        </thead>
+                        <tbody>
+                            <?php
+                            $no = 1;
+                            while ($row = $result->fetch_assoc()):
+                                // Menambahkan total beli dan bayar
+                                $total_beli += $row['beli'];
+                                $total_bayar += $row['bayar'];
+                            ?>
+                                <tr>
+                                    <td><?= $no++ ?></td>
+                                    <td><?= htmlspecialchars($row['nama']) ?></td>
+                                    <td><?= formatRupiah($row['beli']) ?></td>
+                                    <td><?= formatRupiah($row['bayar']) ?></td>
+                                    <td><?= formatTanggal($row['tanggal']) ?></td>
+                                    <td>
+                                        <span class="badge bg-<?= $row['status'] == 'Lunas' ? 'success' : 'danger' ?>">
+                                            <?= htmlspecialchars($row['status']) ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="edit_pulsa.php?id=<?= $row['id'] ?>" class="btn btn-warning btn-sm me-2">Edit</a>
+                                            <a href="delete_pulsa.php?id=<?= $row['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')">Hapus</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endwhile; ?>
+                            <tr>
+                                <td colspan="2" class="text-end"><strong>Total:</strong></td>
+                                <th><?= formatRupiah($total_beli) ?></th>
+                                <th><?= formatRupiah($total_bayar) ?></th>
+                                <td colspan="3"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>

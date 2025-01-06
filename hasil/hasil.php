@@ -1,6 +1,31 @@
 <?php
 include '../koneksi.php';
+function deletePerlengkapan($id, $conn)
+{
+    $deleteQuery = "DELETE FROM perlengkapan WHERE id = '$id'";
+    if ($conn->query($deleteQuery)) {
+        echo "<script>alert('Perlengkapan berhasil dihapus'); window.location='perlengkapan.php';</script>";
+    } else {
+        echo "<script>alert('Gagal menghapus perlengkapan'); window.location='perlengkapan.php';</script>";
+    }
+}
 
+if (isset($_GET['delete'])) {
+    $id = $_GET['delete'];
+    deletePerlengkapan($id, $conn);
+}
+
+// Query untuk mendapatkan data perlengkapan
+function getPerlengkapan($conn)
+{
+    $query = "SELECT * FROM perlengkapan";
+    return $conn->query($query);
+}
+
+$perlengkapanResult = getPerlengkapan($conn);
+
+// Variabel untuk menghitung total harga perlengkapan
+$totalHarga = 0;
 // Mendapatkan nilai filter untuk Pulsa
 $bulan_pulsa = isset($_GET['bulan_pulsa']) ? $_GET['bulan_pulsa'] : 'all';
 $tahun_pulsa = isset($_GET['tahun_pulsa']) ? $_GET['tahun_pulsa'] : 'all';
@@ -48,6 +73,19 @@ while ($row = $result_dokumen->fetch_assoc()) {
 </head>
 
 <body>
+    <?php
+    $no = 1;
+    if ($perlengkapanResult->num_rows > 0) {
+        while ($row = $perlengkapanResult->fetch_assoc()) {
+            // Format harga dengan format Rupiah
+            $formattedHarga = "Rp " . number_format($row['harga'], 2, ',', '.');
+            $totalHarga += $row['harga']; // Menambahkan harga ke total
+            $tanggalBuat = date("d-m-Y", strtotime($row['tanggal_buat']));
+        }
+    } else {
+        echo "<tr><td colspan='5' class='text-center'>Tidak ada data tersedia</td></tr>";
+    }
+    ?>
     <div class="container mt-5">
         <h2 class="text-center mb-4">Hasil Pulsa dan Dokumen</h2>
 
@@ -113,8 +151,8 @@ while ($row = $result_dokumen->fetch_assoc()) {
                             <td><?= number_format($total_bayar_pulsa, 2) ?></td>
                         </tr>
                         <tr>
-                            <td>Total Hasil Pulsa</td>
-                            <td><?= number_format($selisih_bayar_pulsa, 2) ?></td>
+                            <th>Total Hasil Pulsa</th>
+                            <th><?= number_format($selisih_bayar_pulsa, 2) ?></t>
                         </tr>
                     </tbody>
                 </table>
@@ -159,8 +197,16 @@ while ($row = $result_dokumen->fetch_assoc()) {
                     </thead>
                     <tbody>
                         <tr>
-                            <td>Total Hasil Dokumen</td>
-                            <td><?= number_format($total_bayar_dokumen, 2) ?></td>
+                        <td>Total Perlengkapan Dokumen</td>
+                        <td><?= 'Rp ' . number_format($totalHarga, 2, ',', '.') ?></td>
+                        </tr>
+                        <tr>
+                        <td>Total Pendapatan Dokumen</td>
+                        <td><?= number_format($total_bayar_dokumen, 2) ?></td>
+                        </tr>
+                        <tr>
+                        <th>Total Hasil Dokumen</th>
+                        <th><?= 'Rp ' . number_format($total_bayar_dokumen - $totalHarga, 2, ',', '.') ?></th>
                         </tr>
                     </tbody>
                 </table>
