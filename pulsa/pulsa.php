@@ -1,7 +1,8 @@
 <?php
 include '../koneksi.php';
 
-$query = "SELECT * FROM pulsa";
+$query = "SELECT * FROM pulsa ORDER BY id DESC";
+
 $result = $conn->query($query);
 
 function formatRupiah($angka)

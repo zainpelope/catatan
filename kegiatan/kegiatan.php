@@ -18,7 +18,7 @@ if (isset($_GET['delete'])) {
 
 function getRecords($conn)
 {
-    $kegiatanQuery = "SELECT * FROM kegiatan";
+    $kegiatanQuery = "SELECT * FROM kegiatan ORDER BY id DESC";
     $kegiatanResult = $conn->query($kegiatanQuery);
     return $kegiatanResult;
 }

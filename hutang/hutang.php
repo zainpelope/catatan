@@ -2,11 +2,13 @@
 include '../koneksi.php';
 
 // Query untuk mendapatkan data Pulsa
-$queryPulsa = "SELECT * FROM pulsa WHERE status = 'Hutang' ORDER BY tanggal";
+$queryPulsa = "SELECT * FROM pulsa WHERE status = 'Hutang' ORDER BY tanggal DESC";
+
 $resultPulsa = $conn->query($queryPulsa);
 
 // Query untuk mendapatkan data Dokumen
-$queryDokumen = "SELECT * FROM dokumen WHERE status = 'Hutang' ORDER BY tanggal";
+$queryDokumen = "SELECT * FROM dokumen WHERE status = 'Hutang' ORDER BY tanggal DESC";
+
 $resultDokumen = $conn->query($queryDokumen);
 
 // Variabel untuk menghitung total Beli dan Bayar pada Pulsa

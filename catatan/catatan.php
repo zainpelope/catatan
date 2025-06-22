@@ -18,10 +18,11 @@ if (isset($_GET['delete'])) {
 
 function getRecords($conn)
 {
-    $catatanQuery = "SELECT * FROM catatan";
+    $catatanQuery = "SELECT * FROM catatan ORDER BY id DESC";
     $catatanResult = $conn->query($catatanQuery);
     return $catatanResult;
 }
+
 
 function calculateTotalNominal($conn)
 {

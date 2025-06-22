@@ -21,7 +21,7 @@ if (isset($_GET['delete'])) {
 // Query to get Target data
 function getTargets($conn)
 {
-    $targetQuery = "SELECT * FROM target";
+    $targetQuery = "SELECT * FROM target ORDER BY id DESC";
     return $conn->query($targetQuery);
 }
 

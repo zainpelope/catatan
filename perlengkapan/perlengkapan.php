@@ -20,9 +20,10 @@ if (isset($_GET['delete'])) {
 // Query untuk mendapatkan data perlengkapan
 function getPerlengkapan($conn)
 {
-    $query = "SELECT * FROM perlengkapan";
+    $query = "SELECT * FROM perlengkapan ORDER BY tanggal_buat DESC";
     return $conn->query($query);
 }
+
 
 $perlengkapanResult = getPerlengkapan($conn);
 

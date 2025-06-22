@@ -1,7 +1,7 @@
 <?php
 include '../koneksi.php';
 
-$query = "SELECT * FROM dokumen";
+$query = "SELECT * FROM dokumen ORDER BY id DESC";
 $result = $conn->query($query);
 
 // Variabel untuk menghitung total bayar
