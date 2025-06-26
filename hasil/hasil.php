@@ -197,16 +197,16 @@ while ($row = $result_dokumen->fetch_assoc()) {
                     </thead>
                     <tbody>
                         <tr>
-                        <td>Total Perlengkapan Dokumen</td>
-                        <td><?= 'Rp ' . number_format($totalHarga, 2, ',', '.') ?></td>
+                            <td>Total Perlengkapan Dokumen</td>
+                            <td><?= 'Rp ' . number_format($totalHarga, 2, ',', '.') ?></td>
                         </tr>
                         <tr>
-                        <td>Total Pendapatan Dokumen</td>
-                        <td><?= number_format($total_bayar_dokumen, 2) ?></td>
+                            <td>Total Pendapatan Dokumen</td>
+                            <td><?= number_format($total_bayar_dokumen, 2) ?></td>
                         </tr>
                         <tr>
-                        <th>Total Hasil Dokumen</th>
-                        <th><?= 'Rp ' . number_format($total_bayar_dokumen - $totalHarga, 2, ',', '.') ?></th>
+                            <th>Total Hasil Dokumen</th>
+                            <th><?= 'Rp ' . number_format($total_bayar_dokumen - $totalHarga, 2, ',', '.') ?></th>
                         </tr>
                     </tbody>
                 </table>
