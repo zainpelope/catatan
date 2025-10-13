@@ -53,12 +53,8 @@
     </nav>
 
 
-    <!-- Content -->
     <div class="container">
         <div class="row g-4 justify-content-center">
-            <!-- Template Card -->
-            <!-- Ganti sesuai kebutuhan -->
-
             <div class="col-12 col-sm-6 col-md-4 col-lg-3">
                 <div class="card text-center border-primary">
                     <div class="card-body">
@@ -129,10 +125,19 @@
                 </div>
             </div>
 
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                <div class="card text-center border-success">
+                    <div class="card-body">
+                        <div class="card-icon text-success"><i class="bi bi-shop"></i></div>
+                        <h5 class="card-title">Konter</h5>
+                        <a href="konter.php" class="btn btn-success">Lihat Konter</a>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
-    <!-- JS Bootstrap -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-wpNFUeIJENdJtJ6H/0IrmyQX+RZsDdMfo5WPKNBoBo1Or4+CrDOxIxtNkz0nEJG4" crossorigin="anonymous"></script>
 </body>
