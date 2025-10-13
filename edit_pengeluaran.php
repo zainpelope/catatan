@@ -2,7 +2,7 @@
 // Ensure the timezone is set correctly before any date functions are used
 date_default_timezone_set('Asia/Jakarta');
 
-include 'config.php';
+include 'koneksi.php';
 
 // Initialize variables to prevent undefined variable notices
 $tanggal = '';
@@ -116,7 +116,7 @@ if (isset($_POST['submit'])) {
                 <input type="text" class="form-control" id="keterangan" name="keterangan" value="<?= htmlspecialchars($keterangan) ?>" placeholder="Contoh: Beli alat tulis">
             </div>
 
-            
+
 
             <div class="row">
                 <div class="col-12 col-md-6 mb-2">
