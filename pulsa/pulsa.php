@@ -48,6 +48,7 @@ if ($page > $total_pages && $total_pages > 0) {
 // ===================================
 // 4. QUERY DATA DENGAN LIMIT DAN OFFSET
 // ===================================
+// NOTE: Kita SELECT * untuk mendapatkan kolom 'tanggal_lunas' yang baru
 $query = "SELECT * FROM pulsa" . $where_clause . " ORDER BY id DESC LIMIT $start, $limit";
 $result = $conn->query($query);
 
@@ -67,12 +68,22 @@ function formatRupiah($angka)
     return "Rp " . number_format($angka, 2, ',', '.');
 }
 
-function formatTanggal($tanggal)
+function formatTanggal($tanggal, $include_time = false)
 {
-    if (strtotime($tanggal) === false) {
-        return "Tgl Invalid";
+    // Cek jika tanggal kosong, NULL, atau '0000-00-00 00:00:00'
+    if (empty($tanggal) || $tanggal === '0000-00-00 00:00:00' || strtotime($tanggal) === false) {
+        return "-"; // Tampilkan strip jika tidak ada tanggal
     }
-    return date("d-m-Y", strtotime($tanggal));
+
+    // Format standar: d-m-Y
+    $format = "d-m-Y";
+
+    // Jika include_time true, tambahkan format jam dan menit
+    if ($include_time) {
+        $format = "d-m-Y H:i";
+    }
+
+    return date($format, strtotime($tanggal));
 }
 
 $total_beli = 0;
@@ -154,8 +165,9 @@ $total_bayar = 0; // Variabel ini akan menghitung total dari data yang **ditampi
                                 <th>Nama</th>
                                 <th>Beli</th>
                                 <th>Bayar</th>
-                                <th>Tanggal</th>
+                                <th>Tanggal Transaksi</th>
                                 <th>Status</th>
+                                <th style="width: 15%;">Tanggal Lunas</th> <!-- KOLOM BARU -->
                                 <th style="width: 15%;">Aksi</th>
                             </tr>
                         </thead>
@@ -167,6 +179,9 @@ $total_bayar = 0; // Variabel ini akan menghitung total dari data yang **ditampi
                                     <?php
                                     $total_beli += $row['beli'];
                                     $total_bayar += $row['bayar'];
+
+                                    // Ambil tanggal lunas dari kolom baru
+                                    $tanggal_lunas = $row['tanggal_lunas'] ?? null;
                                     ?>
                                     <tr>
                                         <td class="text-center"><?= $no++ ?></td>
@@ -181,6 +196,10 @@ $total_bayar = 0; // Variabel ini akan menghitung total dari data yang **ditampi
                                             </span>
                                         </td>
                                         <td class="text-center">
+                                            <!-- TAMPILKAN TANGGAL LUNAS DENGAN WAKTU -->
+                                            <?= formatTanggal($tanggal_lunas, true) ?>
+                                        </td>
+                                        <td class="text-center">
                                             <div class="btn-group d-flex justify-content-center" role="group">
                                                 <a href="edit_pulsa.php?id=<?= $row['id'] ?>" class="btn btn-warning btn-sm me-1">
                                                     <i class="bi bi-pencil-square"></i> Edit
@@ -189,6 +208,17 @@ $total_bayar = 0; // Variabel ini akan menghitung total dari data yang **ditampi
                                                     onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')">
                                                     <i class="bi bi-trash"></i> Hapus
                                                 </a>
+                                                <!-- Tombol Lunasi (Hanya muncul jika status Belum Lunas) -->
+                                                <?php if ($row['status'] !== 'Lunas'): ?>
+                                                    <form method="POST" action="../hutang/update_status.php" style="display:inline;"
+                                                        onsubmit="return confirm('Yakin ingin melunasi transaksi ini?');">
+                                                        <input type="hidden" name="id" value="<?= $row['id'] ?>">
+                                                        <input type="hidden" name="type" value="pulsa">
+                                                        <button type="submit" class="btn btn-primary btn-sm ms-1">
+                                                            <i class="bi bi-cash"></i> Lunasi
+                                                        </button>
+                                                    </form>
+                                                <?php endif; ?>
                                             </div>
                                         </td>
                                     </tr>
@@ -197,11 +227,11 @@ $total_bayar = 0; // Variabel ini akan menghitung total dari data yang **ditampi
                                     <td colspan="2" class="text-end">Total (Halaman Ini)</td>
                                     <td><?= formatRupiah($total_beli) ?></td>
                                     <td><?= formatRupiah($total_bayar) ?></td>
-                                    <td colspan="3"></td>
+                                    <td colspan="4"></td> <!-- Tambahan 1 kolom colspan untuk Tanggal Lunas -->
                                 </tr>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="7" class="text-center">
+                                    <td colspan="8" class="text-center"> <!-- Tambahan 1 kolom colspan -->
                                         <?php if (!empty($search_query)): ?>
                                             Data **<?= htmlspecialchars($search_query) ?>** tidak ditemukan.
                                         <?php else: ?>
