@@ -239,7 +239,7 @@ function displayPagination($currentPage, $totalPages, $currentPageParam, $otherP
                             <i class="bi bi-search"></i> Cari
                         </button>
                         <?php if (!empty($search_query)): ?>
-                            <a href="data_hutang.php?halaman_pulsa=<?= $pagePulsa ?>&halaman_dokumen=<?= $pageDokumen ?>" class="btn btn-outline-danger">
+                            <a href="hutang.php?halaman_pulsa=<?= $pagePulsa ?>&halaman_dokumen=<?= $pageDokumen ?>" class="btn btn-outline-danger">
                                 <i class="bi bi-x-lg"></i> Reset
                             </a>
                         <?php endif; ?>
