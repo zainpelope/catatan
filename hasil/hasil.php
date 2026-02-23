@@ -153,13 +153,13 @@ $tahun_sekarang = date('Y');
 
         <!-- Filter dan Hasil untuk Pulsa -->
         <div class="mb-5 p-4 border rounded-3 bg-light">
-            <h4 class="text-decoration-underline mb-3">Hasil Transaksi Pulsa (Berdasarkan Tanggal Lunas)</h4>
+            <h4 class="text-decoration-underline mb-3">Pulsa</h4>
 
             <form action="" method="get" class="d-flex flex-wrap align-items-center gap-3 mb-4">
                 <input type="hidden" name="bulan_dokumen" value="<?= htmlspecialchars($bulan_dokumen) ?>">
                 <input type="hidden" name="tahun_dokumen" value="<?= htmlspecialchars($tahun_dokumen) ?>">
 
-                <label class="fw-bold">Periode Lunas Pulsa:</label>
+                <label class="fw-bold">Periode :</label>
                 <select name="bulan_pulsa" class="form-select w-auto rounded-pill">
                     <option value="all" <?= ($bulan_pulsa == 'all') ? 'selected' : '' ?>>Semua Bulan</option>
                     <?php
@@ -181,7 +181,7 @@ $tahun_sekarang = date('Y');
                 </select>
 
 
-                <button type="submit" class="btn btn-primary rounded-pill ms-auto">Tampilkan Hasil</button>
+                <button type="submit" class="btn btn-primary rounded-pill ms-auto">Cek Hasil</button>
             </form>
 
             <div class="table-responsive">
@@ -202,7 +202,7 @@ $tahun_sekarang = date('Y');
                             <td class="text-end text-success"><?= number_format($total_bayar_pulsa, 2, ',', '.') ?></td>
                         </tr>
                         <tr class="<?= ($selisih_bayar_pulsa >= 0) ? 'table-success' : 'table-danger' ?>">
-                            <th class="fw-bold">Total Hasil Pulsa (Profit/Loss)</th>
+                            <th class="fw-bold">Total Hasil Pulsa</th>
                             <th class="text-end fw-bold"><?= number_format($selisih_bayar_pulsa, 2, ',', '.') ?></th>
                         </tr>
                     </tbody>
@@ -214,13 +214,13 @@ $tahun_sekarang = date('Y');
 
         <!-- Filter dan Hasil untuk Dokumen -->
         <div class="p-4 border rounded-3 bg-light">
-            <h4 class="text-decoration-underline mb-3">Hasil Transaksi Dokumen (Berdasarkan Tanggal Lunas)</h4>
+            <h4 class="text-decoration-underline mb-3">Dokumen</h4>
 
             <form action="" method="get" class="d-flex flex-wrap align-items-center gap-3 mb-4">
                 <input type="hidden" name="bulan_pulsa" value="<?= htmlspecialchars($bulan_pulsa) ?>">
                 <input type="hidden" name="tahun_pulsa" value="<?= htmlspecialchars($tahun_pulsa) ?>">
 
-                <label class="fw-bold">Periode Lunas Dokumen & Perlengkapan:</label>
+                <label class="fw-bold">Periode :</label>
                 <select name="bulan_dokumen" class="form-select w-auto rounded-pill">
                     <option value="all" <?= ($bulan_dokumen == 'all') ? 'selected' : '' ?>>Semua Bulan</option>
                     <?php
@@ -241,7 +241,7 @@ $tahun_sekarang = date('Y');
                     ?>
                 </select>
 
-                <button type="submit" class="btn btn-primary rounded-pill ms-auto">Tampilkan Hasil</button>
+                <button type="submit" class="btn btn-primary rounded-pill ms-auto">Cek Hasil</button>
             </form>
 
             <div class="table-responsive">
@@ -263,7 +263,7 @@ $tahun_sekarang = date('Y');
                         </tr>
                         <?php $hasil_dokumen = $total_bayar_dokumen - $totalHarga; ?>
                         <tr class="<?= ($hasil_dokumen >= 0) ? 'table-success' : 'table-danger' ?>">
-                            <th class="fw-bold">Total Hasil Dokumen (Profit/Loss)</th>
+                            <th class="fw-bold">Total Hasil Dokumen</th>
                             <th class="text-end fw-bold"><?= number_format($hasil_dokumen, 2, ',', '.') ?></th>
                         </tr>
                     </tbody>

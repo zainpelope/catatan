@@ -64,7 +64,7 @@ if (isset($_GET['id'])) {
                     </div>
 
                     <button type="submit" class="btn btn-success">Update</button>
-                    <a href="index.php" class="btn btn-secondary">Cancel</a>
+                    <a href="../../catatan/kegiatan/kegiatan.php" class="btn btn-secondary">Cancel</a>
                 </form>
             </div>
         </div>

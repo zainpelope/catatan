@@ -2,104 +2,98 @@
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-// Set timezone to Asia/Jakarta for correct date
 date_default_timezone_set('Asia/Jakarta');
 
 include 'koneksi.php';
 
-// --- Handle Form Submissions ---
+// --- Ambil Parameter Filter ---
+$bulan = isset($_GET['bulan']) ? $_GET['bulan'] : '';
+$tahun = isset($_GET['tahun']) ? $_GET['tahun'] : '';
 
-// Simpan data tabungan
+// Bangun string WHERE untuk filter tanggal
+$filter_sql = "";
+if ($bulan != '' && $tahun != '') {
+    $filter_sql = " WHERE MONTH(tanggal) = '$bulan' AND YEAR(tanggal) = '$tahun'";
+} elseif ($tahun != '') {
+    $filter_sql = " WHERE YEAR(tanggal) = '$tahun'";
+}
+
+// --- Logika Hapus ---
+if (isset($_GET['hapus_tabungan'])) {
+    $id = $_GET['hapus_tabungan'];
+    $stmt = $conn->prepare("DELETE FROM tabungan WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    header("Location: tabungan.php?tab=masuk&bulan=$bulan&tahun=$tahun");
+    exit();
+}
+
+if (isset($_GET['hapus_keluar'])) {
+    $id = $_GET['hapus_keluar'];
+    $stmt = $conn->prepare("DELETE FROM pengeluaran_tabungan WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    header("Location: tabungan.php?tab=keluar&bulan=$bulan&tahun=$tahun");
+    exit();
+}
+
+// --- Handle Simpan ---
 if (isset($_POST['simpan_tabungan'])) {
     $tanggal = $_POST['tanggal'];
     $fauzan = $_POST['fauzan'];
     $pln = $_POST['pln'];
     $pribadi = $_POST['pribadi'];
-
-    // Use prepared statement for INSERT
     $stmt = $conn->prepare("INSERT INTO tabungan (tanggal, fauzan, pln, pribadi) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("siii", $tanggal, $fauzan, $pln, $pribadi); // s = string, i = integer
+    $stmt->bind_param("siii", $tanggal, $fauzan, $pln, $pribadi);
     $stmt->execute();
-    $stmt->close();
-
-    header("Location: tabungan.php");
+    header("Location: tabungan.php?tab=masuk");
     exit();
 }
 
-// Simpan data pengeluaran tabungan
 if (isset($_POST['simpan_pengeluaran'])) {
     $tanggal = $_POST['tanggal'];
     $kategori = $_POST['kategori'];
     $jumlah = $_POST['jumlah'];
     $keterangan = $_POST['keterangan'];
-
-    // Use prepared statement for INSERT
     $stmt = $conn->prepare("INSERT INTO pengeluaran_tabungan (tanggal, kategori, jumlah, keterangan) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("ssis", $tanggal, $kategori, $jumlah, $keterangan); // s = string, i = integer
+    $stmt->bind_param("ssis", $tanggal, $kategori, $jumlah, $keterangan);
     $stmt->execute();
-    $stmt->close();
-
-    header("Location: tabungan.php");
+    header("Location: tabungan.php?tab=keluar");
     exit();
 }
 
-// Hapus data tabungan
-if (isset($_GET['hapus_tabungan'])) {
-    $id = $_GET['hapus_tabungan'];
-
-    // Use prepared statement for DELETE
-    $stmt = $conn->prepare("DELETE FROM tabungan WHERE id = ?");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-    $stmt->close();
-
-    header("Location: tabungan.php");
-    exit();
-}
-
-// Hapus data pengeluaran tabungan
-if (isset($_GET['hapus_keluar'])) {
-    $id = $_GET['hapus_keluar'];
-
-    // Use prepared statement for DELETE
-    $stmt = $conn->prepare("DELETE FROM pengeluaran_tabungan WHERE id = ?");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-    $stmt->close();
-
-    header("Location: tabungan.php");
-    exit();
-}
-
-// --- Data Retrieval for Display ---
-
-// Ambil total tabungan
-// Use prepared statement (though not strictly necessary for simple SELECT without WHERE clause, good practice)
-$stmt_total = $conn->prepare("SELECT SUM(fauzan) AS fauzan, SUM(pln) AS pln, SUM(pribadi) AS pribadi FROM tabungan");
-$stmt_total->execute();
-$total = $stmt_total->get_result()->fetch_assoc();
-$stmt_total->close();
-
-// Ambil total pengeluaran
-$stmt_keluar = $conn->prepare("SELECT kategori, SUM(jumlah) AS total FROM pengeluaran_tabungan GROUP BY kategori");
-$stmt_keluar->execute();
-$keluar_result = $stmt_keluar->get_result();
+// --- Data Rangkuman Saldo (Selalu Akumulasi Total) ---
+$total = $conn->query("SELECT SUM(fauzan) AS fauzan, SUM(pln) AS pln, SUM(pribadi) AS pribadi FROM tabungan")->fetch_assoc();
+$keluar_res = $conn->query("SELECT kategori, SUM(jumlah) AS total FROM pengeluaran_tabungan GROUP BY kategori");
 $keluarData = ['fauzan' => 0, 'pln' => 0, 'pribadi' => 0];
-while ($row = $keluar_result->fetch_assoc()) {
+while ($row = $keluar_res->fetch_assoc()) {
     $keluarData[$row['kategori']] = $row['total'];
 }
-$stmt_keluar->close();
 
-// Hitung sisa tabungan
 $sisa = [
     'fauzan' => ($total['fauzan'] ?? 0) - ($keluarData['fauzan'] ?? 0),
     'pln' => ($total['pln'] ?? 0) - ($keluarData['pln'] ?? 0),
     'pribadi' => ($total['pribadi'] ?? 0) - ($keluarData['pribadi'] ?? 0),
 ];
 
-// Hitung total keseluruhan
-$jumlah_sebelum = ($total['fauzan'] ?? 0) + ($total['pln'] ?? 0) + ($total['pribadi'] ?? 0);
-$jumlah_sesudah = $sisa['fauzan'] + $sisa['pln'] + $sisa['pribadi'];
+// --- Logika Pagination ---
+$limit = 10;
+$page_masuk = isset($_GET['p_in']) ? (int)$_GET['p_in'] : 1;
+$start_masuk = ($page_masuk - 1) * $limit;
+
+$page_keluar = isset($_GET['p_out']) ? (int)$_GET['p_out'] : 1;
+$start_keluar = ($page_keluar - 1) * $limit;
+
+$total_masuk = $conn->query("SELECT COUNT(*) AS total FROM tabungan $filter_sql")->fetch_assoc()['total'];
+$pages_masuk = ceil($total_masuk / $limit);
+
+$total_keluar = $conn->query("SELECT COUNT(*) AS total FROM pengeluaran_tabungan $filter_sql")->fetch_assoc()['total'];
+$pages_keluar = ceil($total_keluar / $limit);
+
+$data_masuk = $conn->query("SELECT * FROM tabungan $filter_sql ORDER BY tanggal DESC LIMIT $start_masuk, $limit");
+$data_keluar = $conn->query("SELECT * FROM pengeluaran_tabungan $filter_sql ORDER BY tanggal DESC LIMIT $start_keluar, $limit");
+
+$active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'saldo';
 ?>
 
 <!DOCTYPE html>
@@ -112,305 +106,249 @@ $jumlah_sesudah = $sisa['fauzan'] + $sisa['pln'] + $sisa['pribadi'];
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
-            background-color: #e9f5f9;
-            /* Light blueish background */
+            background-color: #f4f7f6;
         }
 
         .container {
-            margin-top: 40px;
-            margin-bottom: 40px;
-            background-color: #fff;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.1);
-        }
-
-        h1,
-        h2 {
-            color: #2c3e50;
-            /* Dark blue/grey */
-            margin-bottom: 25px;
-            font-weight: 600;
-        }
-
-        .form-section {
+            margin-top: 30px;
+            background: #fff;
             padding: 25px;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            margin-bottom: 30px;
-            background-color: #f8fafd;
-            /* Lighter background for form sections */
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
         }
 
-        .table-responsive {
-            margin-top: 30px;
-            margin-bottom: 30px;
+        .nav-pills .nav-link {
+            color: #666;
+            border: 1px solid #ddd;
+            margin: 0 5px;
         }
 
-        .table thead th {
-            background-color: #3498db;
-            /* Blue header */
-            color: white;
-            border-color: #3498db;
+        .nav-pills .nav-link.active {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
         }
 
-        .table tbody tr:hover {
-            background-color: #eaf6fa;
-            /* Light hover effect */
+        .card-saldo {
+            border: none;
+            border-top: 4px solid #0d6efd;
+            transition: 0.3s;
         }
 
-        .table tfoot td {
-            background-color: #d1ecf1;
-            /* Light blue footer */
-            font-weight: bold;
-            color: #0c5460;
-        }
-
-        .btn-action {
-            margin-right: 5px;
-        }
-
-        .btn-back {
-            margin-top: 30px;
-            display: block;
-            width: fit-content;
-            margin-left: auto;
-            margin-right: auto;
+        .filter-box {
+            background: #fdfdfd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #eee;
         }
     </style>
 </head>
 
 <body>
+
     <div class="container">
-        <h1 class="text-center mb-5">Tabungan</h1>
+        <h2 class="text-center mb-4 text-primary fw-bold">💰 Manajemen Tabungan</h2>
 
-        <div class="form-section">
-            <h2 class="text-primary">Input Tabungan</h2>
-            <form method="post" class="needs-validation" novalidate>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-4">
-                        <label for="tanggal_tabungan" class="form-label">Tanggal</label>
-                        <input type="date" class="form-control" id="tanggal_tabungan" name="tanggal" value="<?= date('Y-m-d') ?>" required>
-                        <div class="invalid-feedback">Harap pilih tanggal.</div>
-                    </div>
-                    <div class="col-md-8">
-                        <label for="fauzan" class="form-label">Tabungan Fauzan (Rp)</label>
-                        <input type="number" class="form-control" id="fauzan" name="fauzan" placeholder="Tabungan Fauzan" value="" required>
-                        <div class="invalid-feedback">Harap masukkan jumlah tabungan Fauzan.</div>
-                    </div>
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label for="pln" class="form-label">Tabungan PLN (Rp)</label>
-                        <input type="number" class="form-control" id="pln" name="pln" placeholder="Tabungan PLN" value="" required>
-                        <div class="invalid-feedback">Harap masukkan jumlah tabungan PLN.</div>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="pribadi" class="form-label">Tabungan Pribadi (Rp)</label>
-                        <input type="number" class="form-control" id="pribadi" name="pribadi" placeholder="Tabungan Pribadi" value="" required>
-                        <div class="invalid-feedback">Harap masukkan jumlah tabungan Pribadi.</div>
-                    </div>
-                </div>
-                <div class="row g-2">
-                    <div class="col-12">
-                        <button type="submit" name="simpan_tabungan" class="btn btn-primary w-100">Simpan Tabungan</button>
-                    </div>
-                    <div class="col-12">
-                        <a href="konter.php" class="btn btn-secondary w-100">← Kembali ke Dashboard</a>
-                    </div>
-                </div>
-            </form>
+        <div class="d-flex justify-content-center gap-2 mb-4">
+            <button class="btn btn-primary px-4 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalTabungan">+ Tabungan</button>
+            <button class="btn btn-danger px-4 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalPengeluaran">- Keluar</button>
+            <a href="minuman.php" class="btn btn-outline-secondary shadow-sm">Kembali</a>
         </div>
 
-        <hr class="my-5">
+        <ul class="nav nav-pills nav-justified mb-4" id="pills-tab">
+            <li class="nav-item"><button class="nav-link <?= $active_tab == 'saldo' ? 'active' : '' ?>" data-bs-toggle="pill" data-bs-target="#tab-saldo">Ringkasan Saldo</button></li>
+            <li class="nav-item"><button class="nav-link <?= $active_tab == 'masuk' ? 'active' : '' ?>" data-bs-toggle="pill" data-bs-target="#tab-masuk">Riwayat Masuk</button></li>
+            <li class="nav-item"><button class="nav-link <?= $active_tab == 'keluar' ? 'active' : '' ?>" data-bs-toggle="pill" data-bs-target="#tab-keluar">Riwayat Keluar</button></li>
+        </ul>
 
-        <div class="form-section">
-            <h2 class="text-danger">Input Pengeluaran Tabungan</h2>
-            <form method="post" class="needs-validation" novalidate>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-4">
-                        <label for="tanggal_pengeluaran" class="form-label">Tanggal</label>
-                        <input type="date" class="form-control" id="tanggal_pengeluaran" name="tanggal" value="<?= date('Y-m-d') ?>" required>
-                        <div class="invalid-feedback">Harap pilih tanggal.</div>
-                    </div>
-                    <div class="col-md-4">
-                        <label for="kategori" class="form-label">Kategori</label>
-                        <select class="form-select" id="kategori" name="kategori" required>
-                            <option value="">Pilih Kategori</option>
-                            <option value="fauzan">Fauzan</option>
-                            <option value="pln">PLN</option>
-                            <option value="pribadi">Pribadi</option>
-                        </select>
-                        <div class="invalid-feedback">Harap pilih kategori.</div>
-                    </div>
-                    <div class="col-md-4">
-                        <label for="jumlah_keluar" class="form-label">Jumlah (Rp)</label>
-                        <input type="number" class="form-control" id="jumlah_keluar" name="jumlah" placeholder="Jumlah Pengeluaran" required>
-                        <div class="invalid-feedback">Harap masukkan jumlah pengeluaran.</div>
-                    </div>
+        <div class="tab-content">
+            <div class="tab-pane fade <?= $active_tab == 'saldo' ? 'show active' : '' ?>" id="tab-saldo">
+                <div class="row g-3">
+                    <?php foreach (['fauzan' => 'Fauzan', 'pln' => 'PLN', 'pribadi' => 'Pribadi'] as $key => $label): ?>
+                        <div class="col-md-4 text-center">
+                            <div class="card card-saldo shadow-sm p-4">
+                                <span class="text-muted small fw-bold text-uppercase"><?= $label ?></span>
+                                <h3 class="text-primary my-2 fw-bold">Rp <?= number_format($sisa[$key], 0, ',', '.') ?></h3>
+                                <div class="d-flex justify-content-between border-top pt-2 mt-2">
+                                    <small class="text-success fw-bold">Masuk: <?= number_format($total[$key] ?? 0, 0, ',', '.') ?></small>
+                                    <small class="text-danger fw-bold">Keluar: <?= number_format($keluarData[$key] ?? 0, 0, ',', '.') ?></small>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
-                <div class="mb-3">
-                    <label for="keterangan_keluar" class="form-label">Keterangan</label>
-                    <input type="text" class="form-control" id="keterangan_keluar" name="keterangan" placeholder="Contoh: Bayar listrik, Jajan">
+            </div>
+
+            <div class="tab-pane fade <?= $active_tab == 'masuk' ? 'show active' : '' ?>" id="tab-masuk">
+                <div class="filter-box shadow-sm">
+                    <form method="GET" class="row g-2 align-items-end">
+                        <input type="hidden" name="tab" value="masuk">
+                        <div class="col-md-4">
+                            <label class="small fw-bold">Bulan</label>
+                            <select name="bulan" class="form-select form-select-sm">
+                                <option value="">-- Semua Bulan --</option>
+                                <?php
+                                $nama_bulan = [1 => "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+                                foreach ($nama_bulan as $m => $nm) echo "<option value='$m' " . ($bulan == $m ? 'selected' : '') . ">$nm</option>";
+                                ?>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="small fw-bold">Tahun</label>
+                            <select name="tahun" class="form-select form-select-sm">
+                                <?php
+                                for ($y = date('Y'); $y >= 2025; $y--) echo "<option value='$y' " . ($tahun == $y ? 'selected' : '') . ">$y</option>";
+                                ?>
+                            </select>
+                        </div>
+                        <div class="col-md-5 d-flex gap-1">
+                            <button type="submit" class="btn btn-sm btn-dark w-100">Filter</button>
+                            <a href="tabungan.php?tab=masuk" class="btn btn-sm btn-light border">Reset</a>
+                        </div>
+                    </form>
                 </div>
-                <button type="submit" name="simpan_pengeluaran" class="btn btn-danger w-100">Simpan Pengeluaran</button>
-            </form>
-        </div>
 
-        <hr class="my-5">
-
-        <h2 class="text-info">Rangkuman Saldo Tabungan</h2>
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover align-middle">
-                <thead>
-                    <tr>
-                        <th>Kategori</th>
-                        <th>Total Pemasukan</th>
-                        <th>Total Pengeluaran</th>
-                        <th>Sisa Saldo</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Fauzan</td>
-                        <td>Rp <?= number_format($total['fauzan'] ?? 0, 0, ',', '.') ?></td>
-                        <td>Rp <?= number_format($keluarData['fauzan'] ?? 0, 0, ',', '.') ?></td>
-                        <td>Rp <?= number_format($sisa['fauzan'] ?? 0, 0, ',', '.') ?></td>
-                    </tr>
-                    <tr>
-                        <td>PLN</td>
-                        <td>Rp <?= number_format($total['pln'] ?? 0, 0, ',', '.') ?></td>
-                        <td>Rp <?= number_format($keluarData['pln'] ?? 0, 0, ',', '.') ?></td>
-                        <td>Rp <?= number_format($sisa['pln'] ?? 0, 0, ',', '.') ?></td>
-                    </tr>
-                    <tr>
-                        <td>Pribadi</td>
-                        <td>Rp <?= number_format($total['pribadi'] ?? 0, 0, ',', '.') ?></td>
-                        <td>Rp <?= number_format($keluarData['pribadi'] ?? 0, 0, ',', '.') ?></td>
-                        <td>Rp <?= number_format($sisa['pribadi'] ?? 0, 0, ',', '.') ?></td>
-                    </tr>
-                </tbody>
-                <tfoot>
-                    <tr class="table-info">
-                        <td>Total Keseluruhan</td>
-                        <td>Rp <?= number_format($jumlah_sebelum ?? 0, 0, ',', '.') ?></td>
-                        <td>Rp <?= number_format(array_sum($keluarData) ?? 0, 0, ',', '.') ?></td>
-                        <td>Rp <?= number_format($jumlah_sesudah ?? 0, 0, ',', '.') ?></td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-
-        <hr class="my-5">
-
-        <h2 class="text-dark">Riwayat Pemasukan Tabungan</h2>
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover align-middle">
-                <thead>
-                    <tr>
-                        <th>Tanggal</th>
-                        <th>Fauzan (Rp)</th>
-                        <th>PLN (Rp)</th>
-                        <th>Pribadi (Rp)</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    $stmt_data_tabungan = $conn->prepare("SELECT * FROM tabungan ORDER BY tanggal DESC");
-                    $stmt_data_tabungan->execute();
-                    $data_tabungan = $stmt_data_tabungan->get_result();
-
-                    if ($data_tabungan->num_rows > 0) :
-                        while ($row = $data_tabungan->fetch_assoc()) :
-                    ?>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped table-hover border">
+                        <thead class="table-dark text-center small">
                             <tr>
-                                <td><?= htmlspecialchars($row['tanggal']) ?></td>
-                                <td><?= number_format($row['fauzan'], 0, ',', '.') ?></td>
-                                <td><?= number_format($row['pln'], 0, ',', '.') ?></td>
-                                <td><?= number_format($row['pribadi'], 0, ',', '.') ?></td>
-                                <td>
-                                    <a href="edit_tabungan.php?id=<?= $row['id'] ?>" class="btn btn-warning btn-sm btn-action">Edit</a>
-                                    <a href="?hapus_tabungan=<?= $row['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus data ini?')">Hapus</a>
-                                </td>
+                                <th>No</th>
+                                <th>Tanggal</th>
+                                <th>Fauzan</th>
+                                <th>PLN</th>
+                                <th>Pribadi</th>
+                                <th>Aksi</th>
                             </tr>
-                        <?php endwhile; ?>
-                    <?php else : ?>
-                        <tr>
-                            <td colspan="5" class="text-center">Belum ada data pemasukan tabungan.</td>
-                        </tr>
-                    <?php endif;
-                    $stmt_data_tabungan->close();
-                    ?>
-                </tbody>
-            </table>
-        </div>
+                        </thead>
+                        <tbody class="text-center small">
+                            <?php $no = $start_masuk + 1;
+                            while ($row = $data_masuk->fetch_assoc()): ?>
+                                <tr>
+                                    <td><?= $no++ ?></td>
+                                    <td><?= date('d/m/y', strtotime($row['tanggal'])) ?></td>
+                                    <td class="text-success fw-bold"><?= number_format($row['fauzan'], 0, ',', '.') ?></td>
+                                    <td class="text-success fw-bold"><?= number_format($row['pln'], 0, ',', '.') ?></td>
+                                    <td class="text-success fw-bold"><?= number_format($row['pribadi'], 0, ',', '.') ?></td>
+                                    <td><a href="?hapus_tabungan=<?= $row['id'] ?>&bulan=<?= $bulan ?>&tahun=<?= $tahun ?>" class="btn btn-xs btn-outline-danger py-0" onclick="return confirm('Hapus?')">Hapus</a></td>
+                                </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <nav>
+                    <ul class="pagination pagination-sm justify-content-center">
+                        <?php for ($i = 1; $i <= $pages_masuk; $i++): ?>
+                            <li class="page-item <?= ($page_masuk == $i) ? 'active' : '' ?>"><a class="page-link" href="?tab=masuk&p_in=<?= $i ?>&bulan=<?= $bulan ?>&tahun=<?= $tahun ?>"><?= $i ?></a></li>
+                        <?php endfor; ?>
+                    </ul>
+                </nav>
+            </div>
 
-        <hr class="my-5">
+            <div class="tab-pane fade <?= $active_tab == 'keluar' ? 'show active' : '' ?>" id="tab-keluar">
+                <div class="filter-box shadow-sm text-danger border-danger border-opacity-10">
+                    <form method="GET" class="row g-2 align-items-end">
+                        <input type="hidden" name="tab" value="keluar">
+                        <div class="col-md-4">
+                            <label class="small fw-bold">Bulan</label>
+                            <select name="bulan" class="form-select form-select-sm">
+                                <option value="">-- Semua Bulan --</option>
+                                <?php foreach ($nama_bulan as $m => $nm) echo "<option value='$m' " . ($bulan == $m ? 'selected' : '') . ">$nm</option>"; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="small fw-bold">Tahun</label>
+                            <select name="tahun" class="form-select form-select-sm">
+                                <?php for ($y = date('Y'); $y >= 2025; $y--) echo "<option value='$y' " . ($tahun == $y ? 'selected' : '') . ">$y</option>"; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-5 d-flex gap-1">
+                            <button type="submit" class="btn btn-sm btn-danger w-100">Filter</button>
+                            <a href="tabungan.php?tab=keluar" class="btn btn-sm btn-light border text-dark">Reset</a>
+                        </div>
+                    </form>
+                </div>
 
-        <h2 class="text-dark">Riwayat Pengeluaran Tabungan</h2>
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover align-middle">
-                <thead>
-                    <tr>
-                        <th>Tanggal</th>
-                        <th>Kategori</th>
-                        <th>Jumlah (Rp)</th>
-                        <th>Keterangan</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    $stmt_data_keluar = $conn->prepare("SELECT * FROM pengeluaran_tabungan ORDER BY tanggal DESC");
-                    $stmt_data_keluar->execute();
-                    $data_keluar = $stmt_data_keluar->get_result();
-
-                    if ($data_keluar->num_rows > 0) :
-                        while ($row = $data_keluar->fetch_assoc()) :
-                    ?>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped table-hover border">
+                        <thead class="table-dark text-center small">
                             <tr>
-                                <td><?= htmlspecialchars($row['tanggal']) ?></td>
-                                <td><?= htmlspecialchars(ucfirst($row['kategori'])) ?></td>
-                                <td><?= number_format($row['jumlah'], 0, ',', '.') ?></td>
-                                <td><?= htmlspecialchars($row['keterangan']) ?></td>
-                                <td>
-                                    <a href="edit_pengeluaran_tabungan.php?id=<?= $row['id'] ?>" class="btn btn-warning btn-sm btn-action">Edit</a>
-                                    <a href="?hapus_keluar=<?= $row['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus data ini?')">Hapus</a>
-                                </td>
+                                <th>No</th>
+                                <th>Tanggal</th>
+                                <th>Kategori</th>
+                                <th>Jumlah</th>
+                                <th>Keterangan</th>
+                                <th>Aksi</th>
                             </tr>
-                        <?php endwhile; ?>
-                    <?php else : ?>
-                        <tr>
-                            <td colspan="5" class="text-center">Belum ada data pengeluaran tabungan.</td>
-                        </tr>
-                    <?php endif;
-                    $stmt_data_keluar->close();
-                    ?>
-                </tbody>
-            </table>
+                        </thead>
+                        <tbody class="text-center small">
+                            <?php $no = $start_keluar + 1;
+                            while ($row = $data_keluar->fetch_assoc()): ?>
+                                <tr>
+                                    <td><?= $no++ ?></td>
+                                    <td><?= date('d/m/y', strtotime($row['tanggal'])) ?></td>
+                                    <td><span class="badge bg-secondary"><?= ucfirst($row['kategori']) ?></span></td>
+                                    <td class="text-danger fw-bold">Rp <?= number_format($row['jumlah'], 0, ',', '.') ?></td>
+                                    <td class="text-start"><?= htmlspecialchars($row['keterangan']) ?></td>
+                                    <td><a href="?hapus_keluar=<?= $row['id'] ?>&bulan=<?= $bulan ?>&tahun=<?= $tahun ?>" class="btn btn-xs btn-outline-danger py-0" onclick="return confirm('Hapus?')">Hapus</a></td>
+                                </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <nav>
+                    <ul class="pagination pagination-sm justify-content-center">
+                        <?php for ($i = 1; $i <= $pages_keluar; $i++): ?>
+                            <li class="page-item <?= ($page_keluar == $i) ? 'active' : '' ?>"><a class="page-link" href="?tab=keluar&p_out=<?= $i ?>&bulan=<?= $bulan ?>&tahun=<?= $tahun ?>"><?= $i ?></a></li>
+                        <?php endfor; ?>
+                    </ul>
+                </nav>
+            </div>
         </div>
+    </div>
 
+    <div class="modal fade" id="modalTabungan" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content shadow-lg border-0">
+                <form method="post">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title fw-bold">Isi Tabungan</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="mb-3"><label class="form-label fw-bold small">Tanggal</label><input type="date" name="tanggal" class="form-control" value="<?= date('Y-m-d') ?>" required></div>
+                        <div class="mb-3"><label class="form-label fw-bold small">Fauzan (Rp)</label><input type="number" name="fauzan" class="form-control" required></div>
+                        <div class="mb-3"><label class="form-label fw-bold small">PLN (Rp)</label><input type="number" name="pln" class="form-control" required></div>
+                        <div class="mb-3"><label class="form-label fw-bold small">Pribadi (Rp)</label><input type="number" name="pribadi" class="form-control" required></div>
+                    </div>
+                    <div class="modal-footer border-0"><button type="submit" name="simpan_tabungan" class="btn btn-primary w-100 fw-bold">Simpan</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
 
+    <div class="modal fade" id="modalPengeluaran" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content shadow-lg border-0">
+                <form method="post">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title fw-bold">Catat Pengeluaran</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="mb-3"><label class="form-label fw-bold small">Tanggal</label><input type="date" name="tanggal" class="form-control" value="<?= date('Y-m-d') ?>" required></div>
+                        <div class="mb-3"><label class="form-label fw-bold small">Kategori</label><select name="kategori" class="form-select">
+                                <option value="fauzan">Fauzan</option>
+                                <option value="pln">PLN</option>
+                                <option value="pribadi">Pribadi</option>
+                            </select></div>
+                        <div class="mb-3"><label class="form-label fw-bold small">Jumlah (Rp)</label><input type="number" name="jumlah" class="form-control" required></div>
+                        <div class="mb-3"><label class="form-label fw-bold small">Keterangan</label><input type="text" name="keterangan" class="form-control"></div>
+                    </div>
+                    <div class="modal-footer border-0"><button type="submit" name="simpan_pengeluaran" class="btn btn-danger w-100 fw-bold">Simpan</button></div>
+                </form>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Form validation
-        (function() {
-            'use strict';
-            const forms = document.querySelectorAll('.needs-validation');
-            Array.from(forms).forEach(function(form) {
-                form.addEventListener('submit', function(event) {
-                    if (!form.checkValidity()) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                    }
-                    form.classList.add('was-validated');
-                }, false);
-            });
-        })();
-    </script>
 </body>
 
 </html>

@@ -1,102 +1,89 @@
 <?php
-// Pastikan file koneksi.php sudah tersedia dan berfungsi
 include '../koneksi.php';
 
 // ===================================
 // 1. PENGATURAN PAGINATION
 // ===================================
-$limit = 10; // Jumlah data per halaman
+$limit = 10;
 $page = isset($_GET['halaman']) ? (int)$_GET['halaman'] : 1;
-// Pastikan halaman tidak kurang dari 1
 $page = max(1, $page);
-$start = ($page * $limit) - $limit; // Menghitung OFFSET
+$start = ($page * $limit) - $limit;
 
 // ===================================
-// 2. LOGIKA PENCARIAN
+// 2. LOGIKA FILTER & PENCARIAN
 // ===================================
 $search_query = isset($_GET['cari']) ? $_GET['cari'] : '';
-$where_clause = '';
+$filter_bulan = isset($_GET['bulan']) ? $_GET['bulan'] : '';
+$filter_tahun = isset($_GET['tahun']) ? $_GET['tahun'] : date('Y');
 
+$conditions = [];
 if (!empty($search_query)) {
-    // Membersihkan input untuk keamanan
     $safe_search_query = $conn->real_escape_string($search_query);
-    $where_clause = " WHERE nama LIKE '%" . $safe_search_query . "%'";
-    // Reset start/page jika pencarian baru dilakukan (walaupun hidden input sudah disetel ke 1)
-    if (!isset($_GET['halaman'])) {
-        $start = 0;
-        $page = 1;
-    }
+    $conditions[] = "nama LIKE '%$safe_search_query%'";
+}
+if (!empty($filter_bulan)) {
+    $safe_bulan = $conn->real_escape_string($filter_bulan);
+    $conditions[] = "MONTH(tanggal) = '$safe_bulan'";
+}
+if (!empty($filter_tahun)) {
+    $safe_tahun = $conn->real_escape_string($filter_tahun);
+    $conditions[] = "YEAR(tanggal) = '$safe_tahun'";
 }
 
+$where_clause = "";
+if (count($conditions) > 0) {
+    $where_clause = " WHERE " . implode(' AND ', $conditions);
+}
+
+// Variabel untuk mengecek apakah filter sedang aktif agar otomatis terbuka
+$is_filtering = (!empty($search_query) || !empty($filter_bulan)) ? 'show' : '';
+
 // ===================================
-// 3. MENGHITUNG TOTAL BARIS (UNTUK PAGINATION)
+// 3. HITUNG TOTAL KESELURUHAN & SELISIH
+// ===================================
+$sql_grand_total = "SELECT SUM(beli) AS total_beli_all, SUM(bayar) AS total_bayar_all FROM pulsa" . $where_clause;
+$res_grand_total = $conn->query($sql_grand_total);
+$data_grand_total = $res_grand_total->fetch_assoc();
+
+$grand_total_beli = $data_grand_total['total_beli_all'] ?? 0;
+$grand_total_bayar = $data_grand_total['total_bayar_all'] ?? 0;
+$selisih = $grand_total_bayar - $grand_total_beli;
+
+// ===================================
+// 4. PAGINATION DATA
 // ===================================
 $total_query = "SELECT COUNT(id) AS total FROM pulsa" . $where_clause;
 $total_result = $conn->query($total_query);
 $total_rows = $total_result->fetch_assoc()['total'];
-
-// Pastikan total_rows tidak negatif
-$total_rows = max(0, $total_rows);
-$total_pages = ceil($total_rows / $limit); // Total halaman
-
-// Jika halaman yang diminta melebihi total halaman, kembalikan ke halaman terakhir
-if ($page > $total_pages && $total_pages > 0) {
-    $page = $total_pages;
-    $start = ($page * $limit) - $limit;
-}
+$total_pages = ceil($total_rows / $limit);
 
 // ===================================
-// 4. QUERY DATA DENGAN LIMIT DAN OFFSET
+// 5. QUERY DATA UTAMA
 // ===================================
-// NOTE: Kita SELECT * untuk mendapatkan kolom 'tanggal_lunas' yang baru
-$query = "SELECT * FROM pulsa" . $where_clause . " ORDER BY id DESC LIMIT $start, $limit";
+$query = "SELECT * FROM pulsa" . $where_clause . " ORDER BY tanggal DESC, id DESC LIMIT $start, $limit";
 $result = $conn->query($query);
 
-// Cek jika query gagal (untuk debugging)
-if ($result === false) {
-    die("Error executing query: " . $conn->error);
-}
-
-// ===================================
-// FUNGSI FORMAT
-// ===================================
 function formatRupiah($angka)
 {
-    if (!is_numeric($angka)) {
-        return "Rp 0,00";
-    }
-    return "Rp " . number_format($angka, 2, ',', '.');
+    $prefix = $angka < 0 ? "-Rp " : "Rp ";
+    return $prefix . number_format(abs($angka), 0, ',', '.');
 }
 
 function formatTanggal($tanggal, $include_time = false)
 {
-    // Cek jika tanggal kosong, NULL, atau '0000-00-00 00:00:00'
-    if (empty($tanggal) || $tanggal === '0000-00-00 00:00:00' || strtotime($tanggal) === false) {
-        return "-"; // Tampilkan strip jika tidak ada tanggal
-    }
-
-    // Format standar: d-m-Y
-    $format = "d-m-Y";
-
-    // Jika include_time true, tambahkan format jam dan menit
-    if ($include_time) {
-        $format = "d-m-Y H:i";
-    }
-
-    return date($format, strtotime($tanggal));
+    if (empty($tanggal) || $tanggal === '0000-00-00 00:00:00' || strtotime($tanggal) === false) return "-";
+    return date($include_time ? "d-m-Y H:i" : "d-m-Y", strtotime($tanggal));
 }
-
-$total_beli = 0;
-$total_bayar = 0; // Variabel ini akan menghitung total dari data yang **ditampilkan** di halaman saat ini.
 ?>
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Data Pulsa</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Pulsa Lengkap</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body {
@@ -105,234 +92,185 @@ $total_bayar = 0; // Variabel ini akan menghitung total dari data yang **ditampi
 
         .card {
             border-radius: 1rem;
+            border: none;
         }
 
-        .table th,
-        .table td {
-            vertical-align: middle;
-        }
-
-        .btn-sm {
-            font-size: 0.8rem;
-        }
-
-        @media (max-width: 576px) {
-            .btn-group {
-                flex-direction: column;
-                gap: 0.3rem;
-            }
+        .summary-box {
+            background: #fff;
+            border-left: 5px solid #0d6efd;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            height: 100%;
         }
     </style>
 </head>
 
 <body>
+
     <div class="container mt-5 mb-5">
         <div class="card shadow">
-            <div class="card-header bg-primary text-white text-center">
-                <h3><i class="bi bi-phone"></i> Data Pulsa</h3>
+            <div class="card-header bg-primary text-white py-3 text-center">
+                <h3 class="mb-0"><i class="bi bi-phone"></i> Manajemen Transaksi Pulsa</h3>
             </div>
-            <div class="card-body">
-                <div class="d-flex flex-column flex-md-row justify-content-between mb-4 gap-2">
-                    <a href="tambah_pulsa.php" class="btn btn-success">
-                        <i class="bi bi-plus-circle"></i> Tambah Pulsa
-                    </a>
+
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between mb-4">
+                    <div class="d-flex gap-2">
+                        <a href="tambah_pulsa.php" class="btn btn-success">
+                            <i class="bi bi-plus-circle"></i> Tambah Pulsa
+                        </a>
+                        <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="false">
+                            <i class="bi bi-funnel"></i> Filter
+                        </button>
+                    </div>
                     <a href="../index.php" class="btn btn-secondary">
                         <i class="bi bi-arrow-left-circle"></i> Kembali
                     </a>
                 </div>
 
-                <form action="" method="GET" class="mb-4">
-                    <div class="input-group">
-                        <input type="hidden" name="halaman" value="1">
+                <div class="collapse <?= $is_filtering ?>" id="filterCollapse">
+                    <form action="" method="GET" class="row g-3 mb-4 bg-light p-3 rounded border">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">Cari Nama</label>
+                            <input type="text" name="cari" class="form-control" placeholder="Nama..." value="<?= htmlspecialchars($search_query) ?>">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small">Bulan</label>
+                            <select name="bulan" class="form-select">
+                                <option value="">-- Semua Bulan --</option>
+                                <?php
+                                $bulan_list = ["01" => "Januari", "02" => "Februari", "03" => "Maret", "04" => "April", "05" => "Mei", "06" => "Juni", "07" => "Juli", "08" => "Agustus", "09" => "September", "10" => "Oktober", "11" => "November", "12" => "Desember"];
+                                foreach ($bulan_list as $k => $v) {
+                                    $s = ($filter_bulan == $k) ? 'selected' : '';
+                                    echo "<option value='$k' $s>$v</option>";
+                                }
+                                ?>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold small">Tahun</label>
+                            <select name="tahun" class="form-select">
+                                <?php
+                                for ($t = date('Y'); $t >= 2025; $t--) {
+                                    $s = ($filter_tahun == $t) ? 'selected' : '';
+                                    echo "<option value='$t' $s>$t</option>";
+                                }
+                                ?>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end gap-2">
+                            <button type="submit" class="btn btn-primary w-100">Filter</button>
+                            <a href="pulsa.php" class="btn btn-outline-danger"><i class="bi bi-arrow-clockwise"></i></a>
+                        </div>
+                    </form>
+                </div>
 
-                        <input type="text" class="form-control" placeholder="Cari berdasarkan Nama..." name="cari"
-                            value="<?= htmlspecialchars($search_query) ?>">
-                        <button class="btn btn-outline-primary" type="submit">
-                            <i class="bi bi-search"></i> Cari
-                        </button>
-                        <?php if (!empty($search_query)): ?>
-                            <a href="pulsa.php" class="btn btn-outline-danger">
-                                <i class="bi bi-x-lg"></i> Reset
-                            </a>
-                        <?php endif; ?>
+                <div class="row mb-4">
+                    <div class="col-md-4 mb-3">
+                        <div class="summary-box" style="border-left-color: #0d6efd;">
+                            <small class="text-muted d-block fw-bold">TOTAL BELI</small>
+                            <h4 class="text-primary mb-0"><?= formatRupiah($grand_total_beli) ?></h4>
+                        </div>
                     </div>
-                </form>
+                    <div class="col-md-4 mb-3">
+                        <div class="summary-box" style="border-left-color: #198754;">
+                            <small class="text-muted d-block fw-bold">TOTAL BAYAR</small>
+                            <h4 class="text-success mb-0"><?= formatRupiah($grand_total_bayar) ?></h4>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="summary-box" style="border-left-color: <?= $selisih < 0 ? '#dc3545' : '#fd7e14' ?>;">
+                            <small class="text-muted d-block fw-bold">HASIL</small>
+                            <h4 class="<?= $selisih < 0 ? 'text-danger' : 'text-success' ?> mb-0">
+                                <?= formatRupiah($selisih) ?>
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
-                    <table class="table table-bordered table-hover table-striped align-middle">
+                    <table class="table table-hover table-bordered align-middle">
                         <thead class="table-dark text-center">
                             <tr>
-                                <th style="width: 5%;">No</th>
+                                <th>No</th>
                                 <th>Nama</th>
                                 <th>Beli</th>
                                 <th>Bayar</th>
-                                <th>Tanggal Transaksi</th>
+                                <th>Tgl Transaksi</th>
                                 <th>Status</th>
-                                <th style="width: 15%;">Tanggal Lunas</th> <!-- KOLOM BARU -->
-                                <th style="width: 15%;">Aksi</th>
+                                <th>Tgl Lunas</th>
+                                <th>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php $no = $start + 1; // Nomor urut disesuaikan dengan halaman 
+                            <?php
+                            $no = $start + 1;
+                            if ($result->num_rows > 0):
+                                while ($row = $result->fetch_assoc()):
                             ?>
-                            <?php if ($result->num_rows > 0): ?>
-                                <?php while ($row = $result->fetch_assoc()): ?>
-                                    <?php
-                                    $total_beli += $row['beli'];
-                                    $total_bayar += $row['bayar'];
-
-                                    // Ambil tanggal lunas dari kolom baru
-                                    $tanggal_lunas = $row['tanggal_lunas'] ?? null;
-                                    ?>
                                     <tr>
                                         <td class="text-center"><?= $no++ ?></td>
-                                        <td><?= htmlspecialchars($row['nama']) ?></td>
+                                        <td class="fw-bold"><?= htmlspecialchars($row['nama']) ?></td>
                                         <td><?= formatRupiah($row['beli']) ?></td>
                                         <td><?= formatRupiah($row['bayar']) ?></td>
-                                        <td><?= formatTanggal($row['tanggal']) ?></td>
+                                        <td class="text-center small"><?= formatTanggal($row['tanggal'], true) ?></td>
                                         <td class="text-center">
                                             <span class="badge bg-<?= $row['status'] === 'Lunas' ? 'success' : 'danger' ?>">
-                                                <i class="bi bi-<?= $row['status'] === 'Lunas' ? 'check-circle' : 'x-circle' ?>"></i>
-                                                <?= htmlspecialchars($row['status']) ?>
+                                                <?= $row['status'] ?>
                                             </span>
                                         </td>
+                                        <td class="text-center small"><?= formatTanggal($row['tanggal_lunas'], true) ?></td>
                                         <td class="text-center">
-                                            <!-- TAMPILKAN TANGGAL LUNAS DENGAN WAKTU -->
-                                            <?= formatTanggal($tanggal_lunas, true) ?>
-                                        </td>
-                                        <td class="text-center">
-                                            <div class="btn-group d-flex justify-content-center" role="group">
-                                                <a href="edit_pulsa.php?id=<?= $row['id'] ?>" class="btn btn-warning btn-sm me-1">
-                                                    <i class="bi bi-pencil-square"></i> Edit
-                                                </a>
-                                                <a href="delete_pulsa.php?id=<?= $row['id'] ?>" class="btn btn-danger btn-sm"
-                                                    onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')">
-                                                    <i class="bi bi-trash"></i> Hapus
-                                                </a>
-                                                <!-- Tombol Lunasi (Hanya muncul jika status Belum Lunas) -->
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="edit_pulsa.php?id=<?= $row['id'] ?>" class="btn btn-warning"><i class="bi bi-pencil"></i></a>
+                                                <a href="delete_pulsa.php?id=<?= $row['id'] ?>" class="btn btn-danger" onclick="return confirm('Hapus?')"><i class="bi bi-trash"></i></a>
                                                 <?php if ($row['status'] !== 'Lunas'): ?>
-                                                    <form method="POST" action="../hutang/update_status.php" style="display:inline;"
-                                                        onsubmit="return confirm('Yakin ingin melunasi transaksi ini?');">
+                                                    <form method="POST" action="../hutang/update_status.php" style="display:inline;">
                                                         <input type="hidden" name="id" value="<?= $row['id'] ?>">
                                                         <input type="hidden" name="type" value="pulsa">
-                                                        <button type="submit" class="btn btn-primary btn-sm ms-1">
-                                                            <i class="bi bi-cash"></i> Lunasi
-                                                        </button>
+                                                        <button type="submit" class="btn btn-primary btn-sm ms-1"><i class="bi bi-cash"></i></button>
                                                     </form>
                                                 <?php endif; ?>
                                             </div>
                                         </td>
                                     </tr>
                                 <?php endwhile; ?>
-                                <tr class="table-light fw-bold">
-                                    <td colspan="2" class="text-end">Total (Halaman Ini)</td>
-                                    <td><?= formatRupiah($total_beli) ?></td>
-                                    <td><?= formatRupiah($total_bayar) ?></td>
-                                    <td colspan="4"></td> <!-- Tambahan 1 kolom colspan untuk Tanggal Lunas -->
+                                <tr class="table-secondary fw-bold text-center">
+                                    <td colspan="2">TOTAL</td>
+                                    <td class="text-primary"><?= formatRupiah($grand_total_beli) ?></td>
+                                    <td class="text-success"><?= formatRupiah($grand_total_bayar) ?></td>
+                                    <td colspan="4" class="text-end">
+                                        SISA: <span class="<?= $selisih < 0 ? 'text-danger' : 'text-success' ?>"><?= formatRupiah($selisih) ?></span>
+                                    </td>
                                 </tr>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="8" class="text-center"> <!-- Tambahan 1 kolom colspan -->
-                                        <?php if (!empty($search_query)): ?>
-                                            Data **<?= htmlspecialchars($search_query) ?>** tidak ditemukan.
-                                        <?php else: ?>
-                                            Tidak ada data pulsa.
-                                        <?php endif; ?>
-                                    </td>
+                                    <td colspan="8" class="text-center py-4">Data tidak ditemukan.</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
 
-                <?php if ($total_pages > 1): // Tampilkan pagination jika lebih dari 1 halaman 
+                <?php if ($total_pages > 1):
+                    $url_params = "&cari=" . urlencode($search_query) . "&bulan=" . $filter_bulan . "&tahun=" . $filter_tahun;
                 ?>
-                    <div class="d-flex justify-content-between align-items-center mt-4">
-
-                        <nav aria-label="Page navigation">
-                            <ul class="pagination pagination-sm mb-0">
-                                <?php
-                                // Logika untuk menampilkan navigasi halaman yang ramping
-                                $current_page = $page;
-                                $start_page = 1;
-                                $end_page = $total_pages;
-                                $max_links = 5; // Jumlah maksimal link nomor halaman di sekitar halaman aktif
-                                $range = floor($max_links / 2);
-
-                                $start_display = $current_page - $range;
-                                $end_display = $current_page + $range;
-
-                                // Penyesuaian jika di dekat awal
-                                if ($start_display < $start_page) {
-                                    $end_display += ($start_page - $start_display);
-                                    $start_display = $start_page;
-                                }
-
-                                // Penyesuaian jika di dekat akhir
-                                if ($end_display > $end_page) {
-                                    $start_display -= ($end_display - $end_page);
-                                    $end_display = $end_page;
-                                }
-
-                                // Pastikan tidak di bawah 1 (setelah penyesuaian)
-                                if ($start_display < $start_page) {
-                                    $start_display = $start_page;
-                                }
-
-                                // Fungsi helper untuk membuat URL dengan parameter cari
-                                $url_params = !empty($search_query) ? '&cari=' . urlencode($search_query) : '';
-                                ?>
-
-                                <li class="page-item <?= ($current_page <= 1) ? 'disabled' : '' ?>">
-                                    <a class="page-link"
-                                        href="?halaman=<?= $current_page - 1 ?><?= $url_params ?>">
-                                        Previous
-                                    </a>
+                    <nav class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
+                                <a class="page-link" href="?halaman=<?= ($page - 1) . $url_params ?>">Prev</a>
+                            </li>
+                            <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                                <li class="page-item <?= ($page == $i) ? 'active' : '' ?>">
+                                    <a class="page-link" href="?halaman=<?= $i . $url_params ?>"><?= $i ?></a>
                                 </li>
-
-                                <?php
-                                // 1. Tautan ke Halaman Pertama (jika halaman aktif jauh dari awal)
-                                if ($start_display > $start_page) {
-                                    // Tautan ke halaman 1
-                                    echo '<li class="page-item"><a class="page-link" href="?halaman=1' . $url_params . '">1</a></li>';
-                                    // Ellipsis (titik-titik)
-                                    if ($start_display > $start_page + 1) {
-                                        echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                    }
-                                }
-
-                                // 2. Tautan di sekitar Halaman Aktif
-                                for ($i = $start_display; $i <= $end_display; $i++) {
-                                    if ($i > $total_pages) break;
-                                ?>
-                                    <li class="page-item <?= ($current_page == $i) ? 'active' : '' ?>">
-                                        <a class="page-link"
-                                            href="?halaman=<?= $i ?><?= $url_params ?>">
-                                            <?= $i ?>
-                                        </a>
-                                    </li>
-                                <?php
-                                }
-
-                                // 3. Tautan ke Halaman Terakhir (jika halaman aktif jauh dari akhir)
-                                if ($end_display < $end_page) {
-                                    // Ellipsis (titik-titik)
-                                    if ($end_display < $end_page - 1) {
-                                        echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                    }
-                                    // Tautan ke halaman terakhir
-                                    echo '<li class="page-item"><a class="page-link" href="?halaman=' . $total_pages . $url_params . '">' . $total_pages . '</a></li>';
-                                }
-                                ?>
-
-                                <li class="page-item <?= ($current_page >= $total_pages) ? 'disabled' : '' ?>">
-                                    <a class="page-link"
-                                        href="?halaman=<?= $current_page + 1 ?><?= $url_params ?>">
-                                        Next
-                                    </a>
-                                </li>
-                            </ul>
-                        </nav>
-                    </div>
+                            <?php endfor; ?>
+                            <li class="page-item <?= ($page >= $total_pages) ? 'disabled' : '' ?>">
+                                <a class="page-link" href="?halaman=<?= ($page + 1) . $url_params ?>">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
                 <?php endif; ?>
             </div>
         </div>

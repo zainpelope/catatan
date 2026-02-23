@@ -16,13 +16,23 @@ function formatRupiah($angka)
     return "Rp " . number_format($angka, 2, ',', '.');
 }
 
-// Fungsi Format Tanggal
-function formatTanggal($tanggal)
+// Fungsi Format Tanggal (DIMODIFIKASI untuk menyertakan waktu)
+function formatTanggal($tanggal, $include_time = false)
 {
-    if (strtotime($tanggal) === false) {
-        return "Tgl Invalid";
+    // Cek jika tanggal kosong, NULL, atau '0000-00-00 00:00:00'
+    if (empty($tanggal) || $tanggal === '0000-00-00 00:00:00' || strtotime($tanggal) === false) {
+        return "-"; // Tampilkan strip jika tidak ada tanggal
     }
-    return date('d-m-Y', strtotime($tanggal));
+
+    // Format standar: d-m-Y
+    $format = "d-m-Y";
+
+    // Jika include_time true, tambahkan format jam dan menit
+    if ($include_time) {
+        $format = "d-m-Y H:i";
+    }
+
+    return date($format, strtotime($tanggal));
 }
 
 // ===================================
@@ -275,7 +285,7 @@ function displayPagination($currentPage, $totalPages, $currentPageParam, $otherP
                                         <td><?= formatRupiah($row['beli']) ?></td>
                                         <td><?= formatRupiah($row['bayar']) ?></td>
                                         <td class="fw-bold text-danger"><?= formatRupiah($sisaHutang) ?></td>
-                                        <td><?= formatTanggal($row['tanggal']) ?></td>
+                                        <td class="text-center"><?= formatTanggal($row['tanggal'], true) ?></td>
                                         <td class="text-center">
                                             <form action="../hutang/update_status.php" method="POST">
                                                 <input type="hidden" name="id" value="<?= $row['id'] ?>">
@@ -338,7 +348,7 @@ function displayPagination($currentPage, $totalPages, $currentPageParam, $otherP
                                     <tr>
                                         <td class="text-center"><?= $no++ ?></td>
                                         <td><?= htmlspecialchars($row['nama']) ?></td>
-                                        <td><?= formatTanggal($row['tanggal']) ?></td>
+                                        <td class="text-center"><?= formatTanggal($row['tanggal'], true) ?></td>
                                         <td class="fw-bold text-danger"><?= formatRupiah($row['bayar']) ?></td>
                                         <td><?= htmlspecialchars($row['keterangan']) ?></td>
                                         <td class="text-center">

@@ -1,7 +1,7 @@
 <?php
 $host = 'localhost';
 $user = 'root';
-$password = 'root';
+$password = '';
 $database = 'catatan';
 
 $conn = new mysqli($host, $user, $password, $database);
